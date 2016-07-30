@@ -195,7 +195,9 @@ public class TransportTCP : MonoBehaviour {
             {
                 byte[] buffer = new byte[s_mtu];
 
+                // Receive에서 buffer의 할당된 크기까지 데이터를 받아올수있다.
                 int recvSize = m_socket.Receive(buffer, buffer.Length, SocketFlags.None);
+
                 if (recvSize == 0)
                 {
                     // 끊기.
