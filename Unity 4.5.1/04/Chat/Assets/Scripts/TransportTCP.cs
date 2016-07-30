@@ -171,7 +171,9 @@ public class TransportTCP : MonoBehaviour {
             {
                 byte[] buffer = new byte[s_mtu];
 
+                // 메모리스트림을 통해 buffer에 데이터를 오프셋과 사이즈만큼 담아온다.
                 int sendSize = m_sendQueue.Dequeue(ref buffer, buffer.Length);
+
                 while (sendSize > 0)
                 {
                     m_socket.Send(buffer, sendSize, SocketFlags.None);
