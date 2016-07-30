@@ -63,10 +63,14 @@ public class TransportTCP : MonoBehaviour {
 	// Update is called once per frame
 	void Update ()
     {
+
 	}
 
-	// 대기 시작.
-	public bool StartServer(int port, int connectionNum)
+
+
+
+    // 대기 시작.
+    public bool StartServer(int port, int connectionNum)
 	{
         Debug.Log("StartServer called.!");
 
@@ -74,9 +78,11 @@ public class TransportTCP : MonoBehaviour {
         try {
 			// 소켓을 생성합니다.
 			m_listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+
 			// 사용할 포트 번호를 할당합니다.
 			m_listener.Bind(new IPEndPoint(IPAddress.Any, port));
-			// 대기를 시작합니다.
+			
+            // 대기를 시작합니다.
 			m_listener.Listen(connectionNum);
         }
         catch {
@@ -89,7 +95,132 @@ public class TransportTCP : MonoBehaviour {
         return LaunchThread();
     }
 
-	// 대기 종료.
+
+    // 스레드 시작 함수.
+    bool LaunchThread()
+    {
+        try
+        {
+            // Dispatch용 스레드 시작.
+            m_threadLoop = true;
+            m_thread = new Thread(new ThreadStart(Dispatch));
+            m_thread.Start();
+        }
+        catch
+        {
+            Debug.Log("Cannot launch thread.");
+            return false;
+        }
+
+        return true;
+    }
+
+    // 클라리언트 접속.
+    void AcceptClient()
+    {
+        if (m_listener != null && m_listener.Poll(0, SelectMode.SelectRead))
+        {
+            // 클라이언트가 접속했습니다.
+            m_socket = m_listener.Accept();
+            m_isConnected = true;
+            NetEventState state = new NetEventState();
+            state.type = NetEventType.Connect;
+            state.result = NetEventResult.Success;
+            m_handler(state);
+            Debug.Log("Connected from client.");
+        }
+    }
+
+
+    // 스레드 측 송수신 처리.
+    public void Dispatch()
+    {
+        Debug.Log("Dispatch thread started.");
+
+        while (m_threadLoop)
+        {
+            // 클라이언트로부터의 접속을 기다립니다.
+            AcceptClient();
+
+            // 클라이언트와의 송수신 처리를 합니다.
+            if (m_socket != null && m_isConnected == true)
+            {
+
+                // 송신처리.
+                DispatchSend();
+
+                // 수신처리.
+                DispatchReceive();
+            }
+
+            Thread.Sleep(5);
+        }
+
+        Debug.Log("Dispatch thread ended.");
+    }
+
+
+
+    // 스레트 측 송신처리.
+    void DispatchSend()
+    {
+        try
+        {
+            // 송신처리.
+            if (m_socket.Poll(0, SelectMode.SelectWrite))
+            {
+                byte[] buffer = new byte[s_mtu];
+
+                int sendSize = m_sendQueue.Dequeue(ref buffer, buffer.Length);
+                while (sendSize > 0)
+                {
+                    m_socket.Send(buffer, sendSize, SocketFlags.None);
+                    sendSize = m_sendQueue.Dequeue(ref buffer, buffer.Length);
+                }
+            }
+        }
+        catch
+        {
+            return;
+        }
+    }
+
+    // 스레드 측 수신처리.
+    void DispatchReceive()
+    {
+        // 수신처리.
+        try
+        {
+            while (m_socket.Poll(0, SelectMode.SelectRead))
+            {
+                byte[] buffer = new byte[s_mtu];
+
+                int recvSize = m_socket.Receive(buffer, buffer.Length, SocketFlags.None);
+                if (recvSize == 0)
+                {
+                    // 끊기.
+                    Debug.Log("Disconnect recv from client.");
+                    Disconnect();
+                }
+                else if (recvSize > 0)
+                {
+                    m_recvQueue.Enqueue(buffer, recvSize);
+                }
+            }
+        }
+        catch
+        {
+            return;
+        }
+    }
+
+
+
+
+
+
+
+    // 대기 종료.
     public void StopServer()
     {
 		m_threadLoop = false;
@@ -192,121 +323,26 @@ public class TransportTCP : MonoBehaviour {
         return m_recvQueue.Dequeue(ref buffer, size);
     }
 
-	// 이벤트 통지 함수 등록.
+
+
+
+
+
+    // 이벤트 통지 함수 등록.
     public void RegisterEventHandler(EventHandler handler)
     {
         m_handler += handler;
     }
 
-	// 이벤트 통지 함수 삭제.
+    // 이벤트 통지 함수 삭제.
     public void UnregisterEventHandler(EventHandler handler)
     {
         m_handler -= handler;
     }
 
-	// 스레드 시작 함수.
-	bool LaunchThread()
-	{
-		try {
-			// Dispatch용 스레드 시작.
-			m_threadLoop = true;
-			m_thread = new Thread(new ThreadStart(Dispatch));
-			m_thread.Start();
-		}
-		catch {
-			Debug.Log("Cannot launch thread.");
-			return false;
-		}
-		
-		return true;
-	}
 
-	// 스레드 측 송수신 처리.
-    public void Dispatch()
-	{
-		Debug.Log("Dispatch thread started.");
-
-		while (m_threadLoop) {
-			// 클라이언트로부터의 접속을 기다립니다.
-			AcceptClient();
-
-			// 클라이언트와의 송수신 처리를 합니다.
-			if (m_socket != null && m_isConnected == true) {
-
-	            // 송신처리.
-	            DispatchSend();
-
-	            // 수신처리.
-	            DispatchReceive();
-	        }
-
-			Thread.Sleep(5);
-		}
-
-		Debug.Log("Dispatch thread ended.");
-    }
-
-	// 클라리언트 접속.
-	void AcceptClient()
-	{
-		if (m_listener != null && m_listener.Poll(0, SelectMode.SelectRead)) {
-			// 클라이언트가 접속했습니다.
-			m_socket = m_listener.Accept();
-			m_isConnected = true;
-			NetEventState state = new NetEventState();
-			state.type = NetEventType.Connect;
-			state.result = NetEventResult.Success;
-			m_handler(state);
-			Debug.Log("Connected from client.");
-		}
-	}
-
-	// 스레트 측 송신처리.
-    void DispatchSend()
-	{
-        try {
-            // 송신처리.
-            if (m_socket.Poll(0, SelectMode.SelectWrite)) {
-				byte[] buffer = new byte[s_mtu];
-
-                int sendSize = m_sendQueue.Dequeue(ref buffer, buffer.Length);
-                while (sendSize > 0) {
-                    m_socket.Send(buffer, sendSize, SocketFlags.None);
-                    sendSize = m_sendQueue.Dequeue(ref buffer, buffer.Length);
-                }
-            }
-        }
-        catch {
-            return;
-        }
-    }
-
-	// 스레드 측 수신처리.
-    void DispatchReceive()
-	{
-        // 수신처리.
-        try {
-            while (m_socket.Poll(0, SelectMode.SelectRead)) {
-				byte[] buffer = new byte[s_mtu];
-
-                int recvSize = m_socket.Receive(buffer, buffer.Length, SocketFlags.None);
-                if (recvSize == 0) {
-                    // 끊기.
-                    Debug.Log("Disconnect recv from client.");
-                    Disconnect();
-                }
-                else if (recvSize > 0) {
-                    m_recvQueue.Enqueue(buffer, recvSize);
-                }
-            }
-        }
-        catch {
-            return;
-        }
-    }
-
-	// 서버인지 확인.
-	public bool IsServer() {
+    // 서버인지 확인.
+    public bool IsServer() {
 		return m_isServer;
 	}
 	

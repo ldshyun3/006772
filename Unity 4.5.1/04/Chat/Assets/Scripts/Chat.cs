@@ -59,6 +59,7 @@ public class Chat : MonoBehaviour
 		IPHostEntry hostEntry = Dns.GetHostEntry(Dns.GetHostName());
 		System.Net.IPAddress hostAddress = hostEntry.AddressList[0];
 		Debug.Log(hostEntry.HostName);
+
 		m_hostAddress = hostAddress.ToString ();
 
 		GameObject go = new GameObject("Network");
@@ -67,6 +68,7 @@ public class Chat : MonoBehaviour
 		m_transport.RegisterEventHandler(OnEventHandling);
 
 		m_message = new List<string>[CHAT_MEMBER_NUM];
+
 		for (int i = 0; i < CHAT_MEMBER_NUM; ++i) {
 			m_message[i] = new List<string>();
 		}
@@ -75,7 +77,9 @@ public class Chat : MonoBehaviour
 	// Update is called once per frame
 	void Update()
 	{
-		switch (m_state) {
+        // default : m_state = ChatState.HOST_TYPE_SELECT;
+        switch (m_state) {
+
 		case ChatState.HOST_TYPE_SELECT:
 			for (int i = 0; i < CHAT_MEMBER_NUM; ++i) {
 				m_message[i].Clear();
@@ -91,15 +95,98 @@ public class Chat : MonoBehaviour
 			break;
 		}
 	}
-	
-	void UpdateChatting()
+
+
+
+    void OnGUI()
+    {
+        switch (m_state)
+        {
+            case ChatState.HOST_TYPE_SELECT: // <- defualt
+                GUI.DrawTexture(new Rect(0, 0, 800, 600), this.texture_title);
+                SelectHostTypeGUI();
+                break;
+
+            case ChatState.CHATTING:
+                GUI.DrawTexture(new Rect(0, 0, 800, 600), this.texture_bg);
+                ChattingGUI();
+                break;
+
+            case ChatState.ERROR:
+                GUI.DrawTexture(new Rect(0, 0, 800, 600), this.texture_title);
+                ErrorGUI();
+                break;
+        }
+    }
+
+
+    void SelectHostTypeGUI()
+    {
+        float sx = 800.0f;
+        float sy = 600.0f;
+        float px = sx * 0.5f - 100.0f;
+        float py = sy * 0.75f;
+
+        if (GUI.Button(new Rect(px, py, 200, 30), "채팅방 만들기"))
+        {
+
+            m_transport.StartServer(m_port, 1); // m_port = 50765;
+
+            m_state = ChatState.CHATTING;
+            m_isServer = true;
+        }
+
+
+        Rect labelRect = new Rect(px, py + 80, 200, 30);
+        GUIStyle style = new GUIStyle();
+        style.fontStyle = FontStyle.Bold;
+        style.normal.textColor = Color.white;
+        GUI.Label(labelRect, "상대방 IP 주소", style);
+        labelRect.y -= 2;
+        style.fontStyle = FontStyle.Normal;
+        style.normal.textColor = Color.black;
+        GUI.Label(labelRect, "상대방 IP 주소", style);
+
+        Rect textRect = new Rect(px, py + 100, 200, 30);
+        m_hostAddress = GUI.TextField(textRect, m_hostAddress);
+
+
+        if (GUI.Button(new Rect(px, py + 40, 200, 30), "채팅방 들어가기"))
+        {
+            bool ret = m_transport.Connect(m_hostAddress, m_port);
+            if (ret)
+            {
+                m_state = ChatState.CHATTING;
+            }
+            else
+            {
+                m_state = ChatState.ERROR;
+            }
+        }
+    }
+
+    void AddMessage(ref List<string> messages, string str)
+    {
+        while (messages.Count >= MESSAGE_LINE)
+        {
+            messages.RemoveAt(0);
+        }
+
+        messages.Add(str);
+    }
+
+
+
+    void UpdateChatting()
 	{
 		byte[] buffer = new byte[1400];
 
 		int recvSize = m_transport.Receive(ref buffer, buffer.Length);
+
 		if (recvSize > 0) {
 			string message = System.Text.Encoding.UTF8.GetString(buffer);
 			Debug.Log("Recv data:" + message );
+
 			m_chatMessage += message + "   ";// + "\n";
 
 			int id = (m_isServer == true)? 1 : 0;
@@ -124,67 +211,7 @@ public class Chat : MonoBehaviour
 		m_state = ChatState.HOST_TYPE_SELECT;
 	}
 	
-	void OnGUI()
-	{
-		switch (m_state) {
-		case ChatState.HOST_TYPE_SELECT:
-			GUI.DrawTexture(new Rect(0, 0, 800, 600), this.texture_title);
-			SelectHostTypeGUI();
-			break;
-			
-		case ChatState.CHATTING:
-			GUI.DrawTexture(new Rect(0, 0, 800, 600), this.texture_bg);
-			ChattingGUI();
-			break;
 
-		case ChatState.ERROR:
-			GUI.DrawTexture(new Rect(0, 0, 800, 600), this.texture_title);
-			ErrorGUI();
-			break;
-		}
-	}
-	
-	
-	void SelectHostTypeGUI()
-	{
-        float sx = 800.0f;
-        float sy = 600.0f;
-        float px = sx * 0.5f - 100.0f;
-        float py = sy * 0.75f;
-
-        if (GUI.Button(new Rect(px, py, 200, 30), "채팅방 만들기")) {
-
-			m_transport.StartServer(m_port, 1);
-
-			m_state = ChatState.CHATTING;
-			m_isServer = true;
-		}
-
-
-        Rect labelRect = new Rect(px, py + 80, 200, 30);
-		GUIStyle style = new GUIStyle();
-		style.fontStyle = FontStyle.Bold;
-		style.normal.textColor = Color.white;
-		GUI.Label(labelRect, "상대방 IP 주소", style);
-		labelRect.y -= 2;
-		style.fontStyle = FontStyle.Normal;
-		style.normal.textColor = Color.black;
-		GUI.Label(labelRect, "상대방 IP 주소", style);
-
-		Rect textRect = new Rect(px, py + 100, 200, 30);
-        m_hostAddress = GUI.TextField(textRect, m_hostAddress);
-
-
-        if (GUI.Button(new Rect(px, py + 40, 200, 30), "채팅방 들어가기")) {
-			bool ret = m_transport.Connect(m_hostAddress, m_port);
-			if (ret) {
-				m_state = ChatState.CHATTING;
-			}
-			else {
-				m_state = ChatState.ERROR;
-			}
-		}
-	}
 	
 	void ChattingGUI()
 	{
@@ -242,14 +269,7 @@ public class Chat : MonoBehaviour
 		}	
 	}
 
-	void AddMessage(ref List<string> messages, string str)
-	{
-		while (messages.Count >= MESSAGE_LINE) {
-			messages.RemoveAt(0);
-		}
 
-		messages.Add(str);
-	}
 
 	void DispBalloon(ref List<string> messages, Vector2 position, Vector2 size, Color color, bool left) 
 	{
