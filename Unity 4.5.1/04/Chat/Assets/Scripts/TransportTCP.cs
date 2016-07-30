@@ -206,6 +206,7 @@ public class TransportTCP : MonoBehaviour {
                 }
                 else if (recvSize > 0)
                 {
+                    // m_socket.Receive 함수로 buffer의 데이터를 채웠으니 패키지큐에 저장해논다.
                     m_recvQueue.Enqueue(buffer, recvSize);
                 }
             }
