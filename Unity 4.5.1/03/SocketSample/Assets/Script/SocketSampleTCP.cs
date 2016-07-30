@@ -44,9 +44,36 @@ public class SocketSampleTCP : MonoBehaviour
 		Debug.Log(hostEntry.HostName);
 		m_address = hostAddress.ToString();
 	}
-	
-	// Update is called once per frame
-	void Update ()
+
+
+    void OnGUI()
+    {
+        if (m_state == State.SelectHost)
+        {
+            OnGUISelectHost();
+        }
+    }
+
+    void OnGUISelectHost()
+    {
+        // 서버실행
+        if (GUI.Button(new Rect(20, 40, 150, 20), "Launch server."))
+        {
+            m_state = State.StartListener;
+        }
+
+        // 클라이언트를 선택했을 때의 접속할 서버 주소를 입력합니다. 
+        m_address = GUI.TextField(new Rect(20, 100, 200, 20), m_address);
+
+        // 서버접속
+        if (GUI.Button(new Rect(20, 70, 150, 20), "Connect to server"))
+        {
+            m_state = State.ClientCommunication;
+        }
+    }
+
+    // Update is called once per frame
+    void Update ()
 	{
 		switch (m_state) {
 		case State.StartListener:
@@ -74,16 +101,21 @@ public class SocketSampleTCP : MonoBehaviour
 		}
 	}
 
-	// 대기 시작.
-	void StartListener()
+
+    // --------------서버측 코드----------------------
+
+    // 대기 시작.
+    void StartListener()
 	{
 		Debug.Log("Start server communication.");
 		
 		// 소켓을 생성합니다. .
 		m_listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+
 		// 사용할 포트 번호를 할당합니다.
 		m_listener.Bind(new IPEndPoint(IPAddress.Any, m_port));
-		// 대기를 시작합니다. 
+		
+        // 대기를 시작합니다. 
 		m_listener.Listen(1);
 
 		m_state = State.AcceptClient;
@@ -95,8 +127,10 @@ public class SocketSampleTCP : MonoBehaviour
 		if (m_listener != null && m_listener.Poll(0, SelectMode.SelectRead)) {
 			// 클라이언트가 접속했습니다.
 			m_socket = m_listener.Accept();
+
 			Debug.Log("[TCP]Connected from client.");
-			m_state = State.ServerCommunication;
+
+            m_state = State.ServerCommunication;
 		}
 	}
 
@@ -104,8 +138,10 @@ public class SocketSampleTCP : MonoBehaviour
 	void ServerCommunication()
 	{
 		byte[] buffer = new byte[1400];
+
 		int recvSize = m_socket.Receive(buffer, buffer.Length, SocketFlags.None);
-		if (recvSize > 0) {
+
+        if (recvSize > 0) {
 			string message = System.Text.Encoding.UTF8.GetString(buffer);
 			Debug.Log(message);
 			m_state = State.StopListener;
@@ -125,6 +161,12 @@ public class SocketSampleTCP : MonoBehaviour
 
 		Debug.Log("[TCP]End server communication.");
 	}
+
+
+
+    // --------------클라이언트측 코드----------------------
+
+
 
 	// 클라이언트와의 접속, 송신, 접속해제.
 	void ClientProcess()
@@ -148,23 +190,5 @@ public class SocketSampleTCP : MonoBehaviour
 		Debug.Log("[TCP]End client communication.");
 	}
 
-	void OnGUI()
-	{
-		if (m_state == State.SelectHost) {
-			OnGUISelectHost();
-		}
-	}
 
-	void OnGUISelectHost()
-	{
-		if (GUI.Button (new Rect (20,40, 150,20), "Launch server.")) {
-			m_state = State.StartListener;
-		}
-		
-		// 클라이언트를 선택했을 때의 접속할 서버 주소를 입력합니다. 
-		m_address = GUI.TextField(new Rect(20, 100, 200, 20), m_address);
-		if (GUI.Button (new Rect (20,70,150,20), "Connect to server")) {
-			m_state = State.ClientCommunication;
-		}	
-	}
 }
