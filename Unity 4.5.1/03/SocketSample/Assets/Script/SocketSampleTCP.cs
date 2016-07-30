@@ -125,8 +125,10 @@ public class SocketSampleTCP : MonoBehaviour
 	void AcceptClient()
 	{
 		if (m_listener != null && m_listener.Poll(0, SelectMode.SelectRead)) {
-			// 클라이언트가 접속했습니다.
-			m_socket = m_listener.Accept();
+            // 클라이언트가 접속했습니다.
+
+            // 연결수락에 대한 새로운 소켓 인스턴스를 반환.
+            m_socket = m_listener.Accept();
 
 			Debug.Log("[TCP]Connected from client.");
 
