@@ -50,11 +50,45 @@ public class Chat : MonoBehaviour
 		LEAVE,					// 나가기.
 		ERROR,					// 오류.
 	};
-	
-	
-	
-	// Use this for initialization
-	void Start()
+
+    void OnApplicationQuit()
+    {
+        if (m_transport != null)
+        {
+            m_transport.StopServer();
+        }
+    }
+
+    public void OnEventHandling(NetEventState state)
+    {
+        switch (state.type)
+        {
+            case NetEventType.Connect:
+                if (m_transport.IsServer())
+                {
+                    AddMessage(ref m_message[1], "콩장수가 입장했습니다.");
+                }
+                else
+                {
+                    AddMessage(ref m_message[0], "두부장수와 이야기할 수 있습니다.");
+                }
+                break;
+
+            case NetEventType.Disconnect:
+                if (m_transport.IsServer())
+                {
+                    AddMessage(ref m_message[0], "콩장수가 나갔습니다.");
+                }
+                else
+                {
+                    AddMessage(ref m_message[1], "콩장수가 나갔습니다.");
+                }
+                break;
+        }
+    }
+
+    // Use this for initialization
+    void Start()
 	{
 		IPHostEntry hostEntry = Dns.GetHostEntry(Dns.GetHostName());
 		System.Net.IPAddress hostAddress = hostEntry.AddressList[0];
@@ -364,32 +398,5 @@ public class Chat : MonoBehaviour
 		GUI.Label(new Rect(p.x, p.y, text_size.x, text_size.y), message, style);
 	}
 
-	void OnApplicationQuit() {
-		if (m_transport != null) {
-			m_transport.StopServer();
-		}
-	}
 
-	public void OnEventHandling(NetEventState state)
-	{
-		switch (state.type) {
-		case NetEventType.Connect:
-			if (m_transport.IsServer()) {
-				AddMessage(ref m_message[1], "콩장수가 입장했습니다.");
-			}
-			else {
-				AddMessage(ref m_message[0], "두부장수와 이야기할 수 있습니다.");
-			}
-			break;
-
-		case NetEventType.Disconnect:
-			if (m_transport.IsServer()) {
-				AddMessage(ref m_message[0], "콩장수가 나갔습니다.");
-			}
-			else {
-				AddMessage(ref m_message[1], "콩장수가 나갔습니다.");
-			}
-			break;
-		}
-	}
 }
