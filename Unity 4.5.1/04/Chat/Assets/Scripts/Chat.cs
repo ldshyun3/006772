@@ -87,6 +87,19 @@ public class Chat : MonoBehaviour
         }
     }
 
+
+    void AddMessage(ref List<string> messages, string str)
+    {
+        while (messages.Count >= MESSAGE_LINE)
+        {
+            messages.RemoveAt(0);
+        }
+
+        messages.Add(str);
+    }
+
+
+
     // Use this for initialization
     void Start()
 	{
@@ -199,15 +212,7 @@ public class Chat : MonoBehaviour
         }
     }
 
-    void AddMessage(ref List<string> messages, string str)
-    {
-        while (messages.Count >= MESSAGE_LINE)
-        {
-            messages.RemoveAt(0);
-        }
 
-        messages.Add(str);
-    }
 
 
 
