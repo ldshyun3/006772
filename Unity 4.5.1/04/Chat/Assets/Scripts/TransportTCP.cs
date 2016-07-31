@@ -96,6 +96,23 @@ public class TransportTCP : MonoBehaviour {
     }
 
 
+    // 클라리언트 접속.
+    void AcceptClient()
+    {
+        if (m_listener != null && m_listener.Poll(0, SelectMode.SelectRead))
+        {
+            // 클라이언트가 접속했습니다.
+            m_socket = m_listener.Accept();
+            m_isConnected = true;
+            NetEventState state = new NetEventState();
+            state.type = NetEventType.Connect;
+            state.result = NetEventResult.Success;
+            m_handler(state);
+            Debug.Log("Connected from client.");
+        }
+    }
+
+
     // 스레드 시작 함수.
     bool LaunchThread()
     {
@@ -115,21 +132,7 @@ public class TransportTCP : MonoBehaviour {
         return true;
     }
 
-    // 클라리언트 접속.
-    void AcceptClient()
-    {
-        if (m_listener != null && m_listener.Poll(0, SelectMode.SelectRead))
-        {
-            // 클라이언트가 접속했습니다.
-            m_socket = m_listener.Accept();
-            m_isConnected = true;
-            NetEventState state = new NetEventState();
-            state.type = NetEventType.Connect;
-            state.result = NetEventResult.Success;
-            m_handler(state);
-            Debug.Log("Connected from client.");
-        }
-    }
+
 
 
     // 스레드 측 송수신 처리.
